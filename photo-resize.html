@@ -55,6 +55,9 @@ body{font-family:'Segoe UI','Noto Sans Thai',sans-serif;background:var(--g50);co
 .pill{padding:8px 16px;border-radius:20px;border:1.5px solid var(--g300);background:#fff;font-size:13px;font-weight:600;cursor:pointer;color:var(--g600);transition:.15s;white-space:nowrap;line-height:1.3;}
 .pill:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-l);}
 .pill.sel{background:var(--blue);border-color:var(--blue);color:#fff;box-shadow:0 2px 8px rgba(37,99,235,.3);}
+.pill-special{border-style:dashed;border-color:var(--g400);}
+.pill-special:hover{border-style:solid;}
+.pill-special.sel{border-style:solid;}
 
 /* DPI */
 .dpi-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
@@ -96,15 +99,30 @@ body{font-family:'Segoe UI','Noto Sans Thai',sans-serif;background:var(--g50);co
 .slot.filled{border-style:solid;border-color:var(--g200);}
 .slot.filled:hover .slot-overlay{opacity:1;}
 .slot-thumb{width:100%;height:100%;object-fit:cover;display:block;}
-.slot-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;opacity:0;transition:.2s;}
-.slot-overlay span{color:#fff;font-size:11px;font-weight:700;}
-.slot-overlay .ov-btn{padding:5px 11px;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.5);border-radius:6px;color:#fff;font-size:11px;font-weight:700;cursor:pointer;}
-.slot-overlay .ov-btn:hover{background:rgba(255,255,255,.35);}
+.slot-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;opacity:0;transition:.2s;pointer-events:none;}
+.slot-overlay .ov-hint{color:#fff;font-size:12px;font-weight:800;text-shadow:0 1px 3px rgba(0,0,0,.6);}
+.slot.filled:hover .slot-overlay{opacity:1;}
 .slot-empty-icon{font-size:22px;}
 .slot-empty-label{font-size:10px;color:var(--g400);font-weight:600;}
 .slot-num{position:absolute;top:4px;left:5px;font-size:10px;font-weight:800;background:rgba(0,0,0,.45);color:#fff;border-radius:4px;padding:1px 5px;line-height:1.5;}
-.slot-fill-all{position:absolute;bottom:4px;right:4px;font-size:10px;font-weight:700;background:rgba(37,99,235,.85);color:#fff;border-radius:5px;padding:2px 7px;cursor:pointer;display:none;border:none;}
-.slot.filled:hover .slot-fill-all{display:block;}
+
+/* ── Slot action bottom-sheet ── */
+#slot-menu-backdrop{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:900;backdrop-filter:blur(2px);}
+#slot-menu-backdrop.open{display:block;}
+#slot-menu{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(440px,100%);background:#fff;border-radius:18px 18px 0 0;z-index:901;padding:10px 0 env(safe-area-inset-bottom,12px);box-shadow:0 -4px 30px rgba(0,0,0,.18);}
+#slot-menu-title{text-align:center;font-size:13px;font-weight:700;color:var(--g500);padding:6px 20px 10px;border-bottom:1px solid var(--g100);}
+.smenu-btn{display:flex;align-items:center;gap:14px;width:100%;padding:15px 24px;background:none;border:none;font-size:16px;font-weight:700;cursor:pointer;color:var(--g700);text-align:left;transition:.15s;}
+.smenu-btn:active{background:var(--g100);}
+.smenu-btn .smenu-icon{font-size:22px;width:32px;text-align:center;}
+.smenu-btn.danger{color:var(--red);}
+.smenu-btn.cancel{color:var(--g500);font-weight:600;border-top:1px solid var(--g100);margin-top:4px;}
+/* confirm step inside sheet */
+#slot-menu-confirm{display:none;padding:18px 24px;}
+#slot-menu-confirm p{font-size:15px;font-weight:700;color:var(--g700);margin:0 0 16px;text-align:center;}
+#slot-menu-confirm .cfm-row{display:flex;gap:12px;}
+#slot-menu-confirm .cfm-row button{flex:1;padding:13px;border:none;border-radius:10px;font-size:15px;font-weight:700;cursor:pointer;}
+#slot-menu-confirm .cfm-yes{background:var(--red);color:#fff;}
+#slot-menu-confirm .cfm-no{background:var(--g100);color:var(--g700);}
 
 /* hidden file inputs */
 .slot input[type=file]{display:none;}
@@ -161,6 +179,33 @@ body{font-family:'Segoe UI','Noto Sans Thai',sans-serif;background:var(--g50);co
 </style>
 </head>
 <body>
+
+<!-- Slot Action Bottom Sheet -->
+<div id="slot-menu-backdrop" onclick="closeSlotMenu()"></div>
+<div id="slot-menu">
+  <div id="slot-menu-title">รูปที่ <span id="slot-menu-num"></span></div>
+  <div id="slot-menu-main">
+    <button class="smenu-btn" onclick="slotMenuChange()">
+      <span class="smenu-icon">🔄</span> เปลี่ยน / เพิ่มรูป
+    </button>
+    <button class="smenu-btn" onclick="slotMenuFillAll()">
+      <span class="smenu-icon">📋</span> ใช้รูปนี้ทุกช่อง
+    </button>
+    <button class="smenu-btn danger" onclick="slotMenuDelete()">
+      <span class="smenu-icon">🗑️</span> ลบรูปนี้
+    </button>
+    <button class="smenu-btn cancel" onclick="closeSlotMenu()">
+      <span class="smenu-icon">✕</span> ยกเลิก
+    </button>
+  </div>
+  <div id="slot-menu-confirm">
+    <p id="slot-menu-confirm-msg"></p>
+    <div class="cfm-row">
+      <button class="cfm-no" onclick="slotMenuCancelConfirm()">ยกเลิก</button>
+      <button class="cfm-yes" id="slot-menu-confirm-btn">ยืนยัน</button>
+    </div>
+  </div>
+</div>
 
 <!-- PWA Install Banner -->
 <div id="install-bar" style="display:none;align-items:center;gap:12px;padding:10px 18px;background:linear-gradient(135deg,#1d4ed8,#2563eb);color:#fff;font-size:13px;font-weight:600;">
@@ -358,6 +403,7 @@ let fmt      = 'jpeg';
 let bg       = '#ffffff';
 let selPaper = 0;
 let selSize  = 0;
+let selSizeMode = 'inch'; // 'inch' | 'full' | 'border'
 let selLayout = null; // {cols, rows}
 let slotImgs  = [];   // array of Image|null, length = cols*rows
 
@@ -400,12 +446,28 @@ function renderPaperPills() {
 function renderSizePills() {
   const row = document.getElementById('size-pills');
   row.innerHTML = '';
+
+  // ── Special: เต็มแผ่น ──
+  const bFull = document.createElement('button');
+  bFull.className = 'pill pill-special'+(selSizeMode==='full'?' sel':'');
+  bFull.innerHTML = `🖼 เต็มแผ่น<br><span style="font-size:10px;font-weight:400;opacity:.7">1 รูป/แผ่น</span>`;
+  bFull.onclick = ()=>{ selSizeMode='full'; renderSizePills(); refreshLayout(); };
+  row.appendChild(bFull);
+
+  // ── Special: มีกรอบขาว ──
+  const bBorder = document.createElement('button');
+  bBorder.className = 'pill pill-special'+(selSizeMode==='border'?' sel':'');
+  bBorder.innerHTML = `⬜ กรอบขาว<br><span style="font-size:10px;font-weight:400;opacity:.7">1 รูป/แผ่น</span>`;
+  bBorder.onclick = ()=>{ selSizeMode='border'; renderSizePills(); refreshLayout(); };
+  row.appendChild(bBorder);
+
+  // ── Inch sizes ──
   sizes.forEach((s,i)=>{
     const px = Math.round(s*getDpi());
     const b  = document.createElement('button');
-    b.className = 'pill'+(i===selSize?' sel':'');
+    b.className = 'pill'+(selSizeMode==='inch'&&i===selSize?' sel':'');
     b.innerHTML = `${s}"<br><span style="font-size:10px;font-weight:400;opacity:.7">${px}×${px}px</span>`;
-    b.onclick = ()=>{ selSize=i; renderSizePills(); refreshLayout(); };
+    b.onclick = ()=>{ selSizeMode='inch'; selSize=i; renderSizePills(); refreshLayout(); };
     row.appendChild(b);
   });
 }
@@ -460,10 +522,25 @@ function makeSVG(cols,rows,pw,ph,W,H) {
 }
 
 function refreshLayout() {
-  const opts  = getLayoutOpts();
   const grid  = document.getElementById('layout-cards');
   const badge = document.getElementById('layout-badge');
   grid.innerHTML = '';
+
+  // ── Special full-sheet / white-border modes → force 1×1 ──
+  if (selSizeMode === 'full' || selSizeMode === 'border') {
+    const label = selSizeMode === 'full' ? '🖼 เต็มแผ่น — 1 รูป ต่อ 1 แผ่น'
+                                         : '⬜ กรอบขาว — 1 รูป ต่อ 1 แผ่น';
+    grid.innerHTML = `<p style="font-size:13px;color:var(--g500);padding:4px 0;">${label}</p>`;
+    selLayout = {cols:1, rows:1};
+    badge.textContent = '1×1 = 1 รูป';
+    badge.style.display = 'inline-flex';
+    slotImgs = slotImgs.slice(0,1);
+    while(slotImgs.length<1) slotImgs.push(null);
+    updateBigPreview(); updateConvertBtn(); updateSlotGrid();
+    return;
+  }
+
+  const opts  = getLayoutOpts();
 
   if (opts.length===0) {
     grid.innerHTML = '<p style="font-size:13px;color:var(--red)">⚠️ ขนาดรูปใหญ่กว่ากระดาษ กรุณาเลือกขนาดเล็กลง</p>';
@@ -510,19 +587,58 @@ function refreshLayout() {
 /* ══════════════════════════════════════
    BIG PREVIEW
 ══════════════════════════════════════ */
+
+// Draw an image covering rect (x,y,w,h) with crop-to-fit
+function drawImageCover(ctx, img, x, y, w, h) {
+  const sc = Math.max(w/img.naturalWidth, h/img.naturalHeight);
+  const fw = img.naturalWidth*sc, fh = img.naturalHeight*sc;
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x,y,w,h); ctx.clip();
+  ctx.drawImage(img, x+(w-fw)/2, y+(h-fh)/2, fw, fh);
+  ctx.restore();
+}
+
+// Get scaled photo rect for one slot (col c, row r) at given scale
+function getSlotRect(c, r, dpi, scale, PW, PH) {
+  if (selSizeMode === 'full') {
+    return { x: 0, y: 0, iw: Math.round(PW*scale), ih: Math.round(PH*scale) };
+  } else if (selSizeMode === 'border') {
+    const border = Math.round(Math.min(PW,PH)*0.08*scale);
+    const sw = Math.round(PW*scale), sh = Math.round(PH*scale);
+    return { x: border, y: border, iw: sw-2*border, ih: sh-2*border };
+  } else {
+    const gap = parseInt(document.getElementById('gap-in').value)||0;
+    const IW = Math.round(sizes[selSize]*dpi);
+    const iw = Math.round(IW*scale), gp = Math.round(gap*scale);
+    return { x: gp+c*(iw+gp), y: gp+r*(iw+gp), iw, ih: iw };
+  }
+}
+
+// Get actual (full-res) photo rect for one slot
+function getSlotRectFull(c, r, dpi, PW, PH) {
+  if (selSizeMode === 'full') {
+    return { x: 0, y: 0, iw: PW, ih: PH };
+  } else if (selSizeMode === 'border') {
+    const border = Math.round(Math.min(PW,PH)*0.08);
+    return { x: border, y: border, iw: PW-2*border, ih: PH-2*border };
+  } else {
+    const gap = parseInt(document.getElementById('gap-in').value)||0;
+    const IW = Math.round(sizes[selSize]*dpi);
+    return { x: gap+c*(IW+gap), y: gap+r*(IW+gap), iw: IW, ih: IW };
+  }
+}
+
 function updateBigPreview() {
   const wrap = document.getElementById('big-prev');
   wrap.innerHTML = '';
   if (!selLayout) { wrap.innerHTML='<p class="ph">เลือกขนาดกระดาษและขนาดรูปเพื่อดูตัวอย่าง</p>'; return; }
 
-  const dpi  = getDpi(), p = papers[selPaper], inch = sizes[selSize];
-  const gap  = parseInt(document.getElementById('gap-in').value)||0;
+  const dpi  = getDpi(), p = papers[selPaper];
   const {cols,rows} = selLayout;
-  const PW = Math.round(p.w*dpi), PH = Math.round(p.h*dpi), IW = Math.round(inch*dpi);
+  const PW = Math.round(p.w*dpi), PH = Math.round(p.h*dpi);
   const MAX_W = Math.min(640, (window.innerWidth||800)-60);
   const scale = Math.min(MAX_W/PW, 380/PH, 1);
   const cw=Math.round(PW*scale), ch=Math.round(PH*scale);
-  const iw=Math.round(IW*scale), gp=Math.round(gap*scale);
 
   const canvas = document.createElement('canvas');
   canvas.width=cw; canvas.height=ch;
@@ -530,35 +646,43 @@ function updateBigPreview() {
   ctx.fillStyle=bg; ctx.fillRect(0,0,cw,ch);
   ctx.imageSmoothingEnabled=true; ctx.imageSmoothingQuality='high';
 
+  // Draw white border outline for border mode
+  if (selSizeMode === 'border') {
+    const border = Math.round(Math.min(PW,PH)*0.08*scale);
+    ctx.strokeStyle='rgba(0,0,0,.15)'; ctx.lineWidth=1;
+    ctx.setLineDash([4,3]);
+    ctx.strokeRect(border, border, cw-2*border, ch-2*border);
+    ctx.setLineDash([]);
+  }
+
   for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) {
     const idx = r*cols+c;
-    const x = gp+c*(iw+gp), y = gp+r*(iw+gp);
+    const {x,y,iw,ih} = getSlotRect(c, r, dpi, scale, PW, PH);
     const img = slotImgs[idx];
     if (img) {
-      ctx.save(); ctx.beginPath(); ctx.rect(x,y,iw,iw); ctx.clip();
-      const sc=Math.max(iw/img.naturalWidth,iw/img.naturalHeight);
-      const fw=img.naturalWidth*sc, fh=img.naturalHeight*sc;
-      ctx.drawImage(img, x+(iw-fw)/2, y+(iw-fh)/2, fw, fh);
-      ctx.restore();
+      drawImageCover(ctx, img, x, y, iw, ih);
     } else {
-      ctx.fillStyle='#dbeafe'; ctx.fillRect(x,y,iw,iw);
+      ctx.fillStyle='#dbeafe'; ctx.fillRect(x,y,iw,ih);
       ctx.fillStyle='#93c5fd';
-      ctx.font=`bold ${Math.max(9,Math.round(iw*.22))}px sans-serif`;
+      ctx.font=`bold ${Math.max(9,Math.round(Math.min(iw,ih)*.22))}px sans-serif`;
       ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText('📷', x+iw/2, y+iw/2);
-      // slot number
+      ctx.fillText('📷', x+iw/2, y+ih/2);
       ctx.fillStyle='rgba(0,0,0,.3)';
-      ctx.font=`bold ${Math.max(7,Math.round(iw*.14))}px sans-serif`;
-      ctx.fillText(idx+1, x+iw/2, y+iw*.72);
+      ctx.font=`bold ${Math.max(7,Math.round(Math.min(iw,ih)*.14))}px sans-serif`;
+      ctx.fillText(idx+1, x+iw/2, y+ih*.72);
     }
-    ctx.strokeStyle='rgba(0,0,0,.1)'; ctx.lineWidth=1; ctx.strokeRect(x,y,iw,iw);
+    ctx.strokeStyle='rgba(0,0,0,.1)'; ctx.lineWidth=1; ctx.strokeRect(x,y,iw,ih);
   }
 
   wrap.appendChild(canvas);
   const info = document.createElement('p');
   info.className='prev-info';
   const filled = slotImgs.filter(Boolean).length;
-  info.textContent = `${p.label} · ${inch}" (${IW}×${IW}px) · ${cols}×${rows} = ${cols*rows} รูป · อัปโหลดแล้ว ${filled}/${cols*rows}`;
+  let sizeLabel;
+  if (selSizeMode==='full') sizeLabel='เต็มแผ่น';
+  else if (selSizeMode==='border') sizeLabel='กรอบขาว (8%)';
+  else { const IW=Math.round(sizes[selSize]*dpi); sizeLabel=`${sizes[selSize]}" (${IW}×${IW}px)`; }
+  info.textContent = `${p.label} · ${sizeLabel} · ${cols}×${rows} = ${cols*rows} รูป · อัปโหลดแล้ว ${filled}/${cols*rows}`;
   wrap.appendChild(info);
 }
 
@@ -649,16 +773,11 @@ function updateSlotGrid() {
 
       const ov = document.createElement('div');
       ov.className = 'slot-overlay';
-      ov.innerHTML = `<span>รูปที่ ${i+1}</span>
-        <button class="ov-btn" onclick="event.stopPropagation();document.querySelectorAll('.slot')[${i}].querySelector('input').click()">🔄 เปลี่ยน/เพิ่ม</button>
-        <button class="ov-btn" onclick="event.stopPropagation();rmSlot(${i})">✕ ลบ</button>`;
+      ov.innerHTML = `<span class="ov-hint">✏️ แตะเพื่อแก้ไข</span>`;
       slot.appendChild(ov);
 
-      const fillBtn = document.createElement('button');
-      fillBtn.className = 'slot-fill-all';
-      fillBtn.textContent = 'ใช้รูปนี้ทุกช่อง';
-      fillBtn.addEventListener('click', e => { e.stopPropagation(); fillAll(i); });
-      slot.appendChild(fillBtn);
+      // open bottom-sheet on tap
+      slot.addEventListener('click', e => { e.stopPropagation(); openSlotMenu(i); });
 
     } else {
       const ico = document.createElement('div');
@@ -732,6 +851,63 @@ function clearAllSlots() {
   toast('🗑 ล้างรูปทั้งหมดแล้ว');
 }
 
+/* ══════════════════════════════════════
+   SLOT ACTION BOTTOM-SHEET MENU
+══════════════════════════════════════ */
+let _slotMenuIdx = -1;
+
+function openSlotMenu(idx) {
+  _slotMenuIdx = idx;
+  document.getElementById('slot-menu-num').textContent = idx + 1;
+  document.getElementById('slot-menu-main').style.display = 'block';
+  document.getElementById('slot-menu-confirm').style.display = 'none';
+  document.getElementById('slot-menu-backdrop').classList.add('open');
+}
+
+function closeSlotMenu() {
+  document.getElementById('slot-menu-backdrop').classList.remove('open');
+  _slotMenuIdx = -1;
+}
+
+function slotMenuChange() {
+  // trigger the hidden file input of this slot
+  const slots = document.querySelectorAll('.slot');
+  if (slots[_slotMenuIdx]) {
+    const fin = slots[_slotMenuIdx].querySelector('input[type=file]');
+    if (fin) fin.click();
+  }
+  closeSlotMenu();
+}
+
+function slotMenuFillAll() {
+  document.getElementById('slot-menu-main').style.display = 'none';
+  document.getElementById('slot-menu-confirm-msg').textContent =
+    `ใช้รูปที่ ${_slotMenuIdx + 1} ใส่ทุกช่องใช่ไหม?`;
+  document.getElementById('slot-menu-confirm-btn').textContent = 'ใช้ทุกช่อง';
+  document.getElementById('slot-menu-confirm-btn').onclick = () => {
+    fillAll(_slotMenuIdx);
+    closeSlotMenu();
+  };
+  document.getElementById('slot-menu-confirm').style.display = 'block';
+}
+
+function slotMenuDelete() {
+  document.getElementById('slot-menu-main').style.display = 'none';
+  document.getElementById('slot-menu-confirm-msg').textContent =
+    `ลบรูปที่ ${_slotMenuIdx + 1} ออกใช่ไหม?`;
+  document.getElementById('slot-menu-confirm-btn').textContent = 'ลบรูป';
+  document.getElementById('slot-menu-confirm-btn').onclick = () => {
+    rmSlot(_slotMenuIdx);
+    closeSlotMenu();
+  };
+  document.getElementById('slot-menu-confirm').style.display = 'block';
+}
+
+function slotMenuCancelConfirm() {
+  document.getElementById('slot-menu-confirm').style.display = 'none';
+  document.getElementById('slot-menu-main').style.display = 'block';
+}
+
 // batch upload — เติมจาก slot ว่างแรก
 document.getElementById('batch-in').addEventListener('change', e => {
   if (!selLayout || !e.target.files.length) return;
@@ -801,10 +977,9 @@ async function doConvert() {
   btn.innerHTML='<span class="spin">⚙️</span> กำลังสร้าง...';
 
   try {
-    const dpi  = getDpi(), p = papers[selPaper], inch = sizes[selSize];
-    const gap  = parseInt(document.getElementById('gap-in').value)||0;
+    const dpi  = getDpi(), p = papers[selPaper];
     const {cols,rows} = selLayout;
-    const PW = Math.round(p.w*dpi), PH = Math.round(p.h*dpi), IW = Math.round(inch*dpi);
+    const PW = Math.round(p.w*dpi), PH = Math.round(p.h*dpi);
 
     const canvas = document.createElement('canvas');
     canvas.width=PW; canvas.height=PH;
@@ -814,18 +989,17 @@ async function doConvert() {
 
     for (let r=0;r<rows;r++) for (let c=0;c<cols;c++) {
       const idx = r*cols+c;
-      const x = gap+c*(IW+gap), y = gap+r*(IW+gap);
+      const {x,y,iw,ih} = getSlotRectFull(c, r, dpi, PW, PH);
       const img = slotImgs[idx];
       if (img) {
-        ctx.save(); ctx.beginPath(); ctx.rect(x,y,IW,IW); ctx.clip();
-        const sc=Math.max(IW/img.naturalWidth,IW/img.naturalHeight);
-        const fw=img.naturalWidth*sc, fh=img.naturalHeight*sc;
-        ctx.drawImage(img, x+(IW-fw)/2, y+(IW-fh)/2, fw, fh);
-        ctx.restore();
+        drawImageCover(ctx, img, x, y, iw, ih);
       } else {
-        ctx.fillStyle='#dbeafe'; ctx.fillRect(x,y,IW,IW);
+        ctx.fillStyle='#dbeafe'; ctx.fillRect(x,y,iw,ih);
       }
-      ctx.strokeStyle='rgba(0,0,0,.08)'; ctx.lineWidth=1; ctx.strokeRect(x,y,IW,IW);
+      // stroke only for multi-slot inch mode
+      if (selSizeMode==='inch') {
+        ctx.strokeStyle='rgba(0,0,0,.08)'; ctx.lineWidth=1; ctx.strokeRect(x,y,iw,ih);
+      }
     }
 
     const mime = fmt==='jpeg'?'image/jpeg':`image/${fmt}`;
@@ -833,14 +1007,21 @@ async function doConvert() {
     const blob = await new Promise(res=>canvas.toBlob(b=>res(b),mime,q));
     const url  = URL.createObjectURL(blob);
     const ext  = fmt==='jpeg'?'jpg':fmt;
-    const fname= `sheet_${p.label.replace(/[×"]/g,'x')}_${inch}in_${cols}x${rows}.${ext}`;
+    let sizeTag, sizeLabel;
+    if (selSizeMode==='full') { sizeTag='full'; sizeLabel='เต็มแผ่น'; }
+    else if (selSizeMode==='border') { sizeTag='border'; sizeLabel='กรอบขาว'; }
+    else {
+      const inch=sizes[selSize]; const IW=Math.round(inch*dpi);
+      sizeTag=`${inch}in`; sizeLabel=`${inch}" = ${IW}×${IW}px`;
+    }
+    const fname= `sheet_${p.label.replace(/[×"]/g,'x')}_${sizeTag}_${cols}x${rows}.${ext}`;
 
     document.getElementById('res-img').src = url;
     document.getElementById('btn-dl').href = url;
     document.getElementById('btn-dl').download = fname;
     const filled = slotImgs.filter(Boolean).length;
     document.getElementById('res-meta').innerHTML=
-      `<span>📄 ${p.label}</span><span>📐 ${inch}" = ${IW}×${IW}px</span>
+      `<span>📄 ${p.label}</span><span>📐 ${sizeLabel}</span>
        <span>🔢 ${cols}×${rows} = ${cols*rows} ช่อง (มีรูป ${filled})</span>
        <span>📏 ${PW}×${PH}px · ${dpi} DPI</span>
        <span>💾 ${(blob.size/1024).toFixed(1)} KB</span>`;
