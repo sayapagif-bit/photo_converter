@@ -237,13 +237,24 @@ body{font-family:'Segoe UI','Noto Sans Thai',sans-serif;background:var(--g50);co
       <span id="upload-count-badge" class="badge-count" style="margin-left:auto;">เลือก layout ก่อน</span>
     </div>
     <div class="sc-body">
-      <!-- hidden batch input -->
-      <input type="file" id="batch-in" accept="image/*" multiple style="display:none"/>
-      <div class="slot-toolbar">
-        <button class="btn-sm primary" onclick="document.getElementById('batch-in').click()">📂 เลือกหลายรูปพร้อมกัน</button>
-        <button class="btn-sm ghost"   onclick="clearAllSlots()">🗑 ล้างทั้งหมด</button>
-        <span id="slot-count-text" class="count-badge">ยังไม่ได้เลือก layout</span>
+      <!-- hidden inputs -->
+      <input type="file" id="batch-in"    accept="image/*" multiple style="display:none"/>
+      <input type="file" id="batch-from"  accept="image/*" multiple style="display:none"/>
+
+      <!-- Big drop zone (แสดงตอนยังไม่มีรูป) -->
+      <div id="big-drop-zone" style="display:none;border:2px dashed var(--g300);border-radius:var(--r);padding:36px 20px;text-align:center;cursor:pointer;background:var(--g50);transition:.2s;margin-bottom:14px;" onclick="document.getElementById('batch-in').click()">
+        <div style="font-size:42px;margin-bottom:10px;">📂</div>
+        <div id="big-drop-label" style="font-size:15px;font-weight:700;color:var(--g700);margin-bottom:6px;">เลือกรูป</div>
+        <div id="big-drop-sub" style="font-size:12px;color:var(--g400);">หรือลากรูปมาวางที่นี่</div>
       </div>
+
+      <!-- Toolbar (แสดงเมื่อมีรูปบ้างแล้ว) -->
+      <div class="slot-toolbar" id="slot-toolbar" style="display:none;">
+        <button class="btn-sm primary" id="btn-add-more" onclick="document.getElementById('batch-in').click()">📂 เพิ่มรูป</button>
+        <button class="btn-sm ghost" onclick="clearAllSlots()">🗑 ล้างทั้งหมด</button>
+        <span id="slot-count-text" class="count-badge">—</span>
+      </div>
+
       <div id="slot-grid" class="slot-grid"></div>
     </div>
   </div>
@@ -555,84 +566,109 @@ function updateBigPreview() {
    SLOT GRID
 ══════════════════════════════════════ */
 function updateSlotGrid() {
-  const grid     = document.getElementById('slot-grid');
+  const grid       = document.getElementById('slot-grid');
   const countBadge = document.getElementById('upload-count-badge');
   const countText  = document.getElementById('slot-count-text');
+  const bigDrop    = document.getElementById('big-drop-zone');
+  const toolbar    = document.getElementById('slot-toolbar');
 
   if (!selLayout) {
     grid.innerHTML = '<p style="font-size:13px;color:var(--g400);padding:8px 0;">เลือก Layout ในข้อ 4 ก่อน</p>';
     countBadge.textContent = 'เลือก layout ก่อน';
-    countText.textContent = 'เลือก layout ก่อน';
-    countText.classList.remove('done');
+    bigDrop.style.display = 'none';
+    toolbar.style.display = 'none';
     return;
   }
 
   const {cols,rows} = selLayout;
-  const total = cols*rows;
+  const total  = cols * rows;
   const filled = slotImgs.filter(Boolean).length;
+  const empty  = total - filled;
 
-  countBadge.textContent = `อัปโหลด ${filled}/${total} รูป`;
-  countBadge.className = filled===total ? 'badge-ok' : 'badge-count';
+  // badge
+  countBadge.textContent = filled === total
+    ? `✅ ครบ ${total} รูป`
+    : `อัปโหลด ${filled}/${total} รูป`;
+  countBadge.className = filled === total ? 'badge-ok' : 'badge-count';
+
+  // big drop zone — แสดงเมื่อยังไม่มีรูปเลย
+  if (filled === 0) {
+    bigDrop.style.display = 'block';
+    toolbar.style.display = 'none';
+    document.getElementById('big-drop-label').textContent =
+      `เลือก ${total} รูปพร้อมกัน (${cols}×${rows})`;
+    document.getElementById('big-drop-sub').textContent =
+      `ลากรูป ${total} รูปมาวางที่นี่ หรือกดเพื่อเลือก`;
+    grid.innerHTML = '';
+    return;
+  }
+
+  // toolbar — แสดงเมื่อมีรูปบ้างแล้ว
+  bigDrop.style.display = 'none';
+  toolbar.style.display = 'flex';
   countText.textContent = `อัปโหลดแล้ว ${filled}/${total} รูป`;
-  countText.className = 'count-badge'+(filled===total?' done':'');
+  countText.className = 'count-badge' + (filled === total ? ' done' : '');
 
-  // calc slot size for display
-  const maxW = Math.min(680, (window.innerWidth||800)-60);
+  // update button text
+  const addBtn = document.getElementById('btn-add-more');
+  addBtn.textContent = empty > 0
+    ? `📂 เลือก ${empty} รูปที่เหลือ`
+    : `📂 เปลี่ยนรูปทั้งหมด`;
+
+  // calc slot size
+  const maxW   = Math.min(680, (window.innerWidth||800) - 60);
   const cellPx = Math.max(60, Math.min(120, Math.floor((maxW - cols*10) / cols)));
-
   grid.style.gridTemplateColumns = `repeat(${cols}, ${cellPx}px)`;
   grid.innerHTML = '';
 
-  for (let i=0;i<total;i++) {
+  for (let i = 0; i < total; i++) {
     const slot = document.createElement('div');
-    slot.className = 'slot'+(slotImgs[i]?' filled':'');
-    slot.style.width = cellPx+'px';
-    slot.style.height = cellPx+'px';
+    slot.className = 'slot' + (slotImgs[i] ? ' filled' : '');
+    slot.style.width  = cellPx + 'px';
+    slot.style.height = cellPx + 'px';
 
-    // hidden file input per slot
+    // hidden file input per slot — รองรับ multiple เพื่อเลือกรูปต่อเนื่องจาก slot นี้
     const fin = document.createElement('input');
-    fin.type='file'; fin.accept='image/*';
-    fin.addEventListener('change', e=>{
-      if (e.target.files[0]) loadSlot(i, e.target.files[0]);
+    fin.type = 'file'; fin.accept = 'image/*'; fin.multiple = true;
+    fin.addEventListener('change', e => {
+      if (!e.target.files.length) return;
+      loadMultiFromSlot(i, [...e.target.files]);
     });
     slot.appendChild(fin);
 
     // slot number
     const num = document.createElement('div');
-    num.className='slot-num'; num.textContent=i+1;
+    num.className = 'slot-num'; num.textContent = i + 1;
     slot.appendChild(num);
 
     if (slotImgs[i]) {
-      // thumbnail
       const thumb = document.createElement('img');
-      thumb.className='slot-thumb';
+      thumb.className = 'slot-thumb';
       thumb.src = slotImgs[i]._url || '';
       slot.appendChild(thumb);
 
-      // overlay
       const ov = document.createElement('div');
-      ov.className='slot-overlay';
-      ov.innerHTML=`<span>รูปที่ ${i+1}</span>
-        <button class="ov-btn" onclick="event.stopPropagation();document.querySelectorAll('.slot')[${i}].querySelector('input').click()">🔄 เปลี่ยน</button>
+      ov.className = 'slot-overlay';
+      ov.innerHTML = `<span>รูปที่ ${i+1}</span>
+        <button class="ov-btn" onclick="event.stopPropagation();document.querySelectorAll('.slot')[${i}].querySelector('input').click()">🔄 เปลี่ยน/เพิ่ม</button>
         <button class="ov-btn" onclick="event.stopPropagation();rmSlot(${i})">✕ ลบ</button>`;
       slot.appendChild(ov);
 
-      // fill-all button
       const fillBtn = document.createElement('button');
-      fillBtn.className='slot-fill-all';
-      fillBtn.textContent='ใช้รูปนี้ทุกช่อง';
-      fillBtn.addEventListener('click', e=>{ e.stopPropagation(); fillAll(i); });
+      fillBtn.className = 'slot-fill-all';
+      fillBtn.textContent = 'ใช้รูปนี้ทุกช่อง';
+      fillBtn.addEventListener('click', e => { e.stopPropagation(); fillAll(i); });
       slot.appendChild(fillBtn);
 
     } else {
       const ico = document.createElement('div');
-      ico.className='slot-empty-icon'; ico.textContent='📷';
+      ico.className = 'slot-empty-icon'; ico.textContent = '📷';
       const lbl = document.createElement('div');
-      lbl.className='slot-empty-label'; lbl.textContent=`รูปที่ ${i+1}`;
+      lbl.className = 'slot-empty-label'; lbl.textContent = `รูปที่ ${i+1}`;
       slot.appendChild(ico); slot.appendChild(lbl);
+      slot.addEventListener('click', () => fin.click());
     }
 
-    slot.addEventListener('click', ()=>{ if(!slotImgs[i]) fin.click(); });
     grid.appendChild(slot);
   }
 }
@@ -643,15 +679,37 @@ function updateSlotGrid() {
 function loadSlot(idx, file) {
   const url = URL.createObjectURL(file);
   const img = new Image();
-  img.onload = ()=>{
+  img.onload = () => {
     img._url = url;
     slotImgs[idx] = img;
     updateSlotGrid();
     updateBigPreview();
     updateConvertBtn();
-    toast(`✅ รูปที่ ${idx+1} อัปโหลดแล้ว`);
   };
   img.src = url;
+}
+
+// เลือกหลายรูปจาก slot idx เป็นต้นไป
+function loadMultiFromSlot(startIdx, files) {
+  if (!selLayout) return;
+  const total = selLayout.cols * selLayout.rows;
+  let loaded = 0;
+  files.forEach((file, fi) => {
+    const si = startIdx + fi;
+    if (si >= total) return;
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      img._url = url;
+      slotImgs[si] = img;
+      loaded++;
+      if (loaded === Math.min(files.length, total - startIdx)) {
+        updateSlotGrid(); updateBigPreview(); updateConvertBtn();
+        toast(`✅ อัปโหลด ${loaded} รูป (ช่อง ${startIdx+1}–${startIdx+loaded})`);
+      }
+    };
+    img.src = url;
+  });
 }
 
 function rmSlot(idx) {
@@ -674,31 +732,59 @@ function clearAllSlots() {
   toast('🗑 ล้างรูปทั้งหมดแล้ว');
 }
 
-// batch upload
-document.getElementById('batch-in').addEventListener('change', e=>{
-  if (!selLayout||!e.target.files.length) return;
-  const files = [...e.target.files];
-  const total = selLayout.cols * selLayout.rows;
-  let loaded = 0;
-  const startIdx = slotImgs.findIndex(x=>!x); // fill from first empty
-  files.forEach((file, fi)=>{
-    const si = startIdx+fi;
-    if (si>=total) return;
-    const url = URL.createObjectURL(file);
-    const img = new Image();
-    img.onload = ()=>{
-      img._url = url;
-      slotImgs[si] = img;
-      loaded++;
-      if (loaded===Math.min(files.length, total-startIdx)) {
-        updateSlotGrid(); updateBigPreview(); updateConvertBtn();
-        toast(`✅ อัปโหลด ${loaded} รูปแล้ว`);
-      }
-    };
-    img.src = url;
-  });
-  e.target.value='';
+// batch upload — เติมจาก slot ว่างแรก
+document.getElementById('batch-in').addEventListener('change', e => {
+  if (!selLayout || !e.target.files.length) return;
+  const files    = [...e.target.files];
+  const startIdx = Math.max(0, slotImgs.findIndex(x => !x));
+  loadMultiFromSlot(startIdx, files);
+  e.target.value = '';
 });
+
+// legacy batch-from (ไม่ได้ใช้แล้ว แต่เผื่อ)
+document.getElementById('batch-from').addEventListener('change', e => {
+  if (!selLayout || !e.target.files.length) return;
+  const files    = [...e.target.files];
+  const startIdx = Math.max(0, slotImgs.findIndex(x => !x));
+  loadMultiFromSlot(startIdx, files);
+  e.target.value = '';
+});
+
+// drag-drop บน big-drop-zone
+(function() {
+  const zone = document.getElementById('big-drop-zone');
+  zone.addEventListener('dragover', e => {
+    e.preventDefault();
+    zone.style.borderColor = 'var(--blue)';
+    zone.style.background  = 'var(--blue-l)';
+  });
+  zone.addEventListener('dragleave', () => {
+    zone.style.borderColor = 'var(--g300)';
+    zone.style.background  = 'var(--g50)';
+  });
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.style.borderColor = 'var(--g300)';
+    zone.style.background  = 'var(--g50)';
+    if (!selLayout) return;
+    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    if (files.length) loadMultiFromSlot(0, files);
+  });
+
+  // drag-drop บน slot-grid ด้วย
+  const body = document.getElementById('tab-create');
+  body.addEventListener('dragover', e => e.preventDefault());
+  body.addEventListener('drop', e => {
+    e.preventDefault();
+    if (!selLayout) return;
+    const files = [...e.dataTransfer.files].filter(f => f.type.startsWith('image/'));
+    if (!files.length) return;
+    const startIdx = Math.max(0, slotImgs.findIndex(x => !x));
+    loadMultiFromSlot(startIdx, files);
+  });
+})();
+
+// end of upload section
 
 /* ══════════════════════════════════════
    CONVERT
